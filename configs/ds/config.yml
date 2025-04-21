@@ -1,0 +1,33 @@
+cpp_codegen_target: codegen
+cpp_default_profile: release
+
+# PRIVATE BEGIN
+gitlab_url: https://gitlab.manytask.org
+course_public_repo: hsse/ds/public-2024-fall
+course_students_group: hsse/ds/students-2024-fall
+manytask_url: https://ds.manytask.org
+
+cpp_lint_all_profiles:
+  - release
+
+exclude_patterns:
+  - "build*"
+  - "*private*"
+  - "Dockerfile"
+  - "compile_commands.json"
+  - "__pycache__"
+  - ".*"
+  - "lines/tests"
+
+include_patterns:
+  - ".gitlab-ci.yml"
+  - ".gitignore"
+  - ".clang-format"
+  - ".clang-tidy"
+  - '.task.yml'
+  - ".version*"
+
+modules:
+  - cpp
+  - go
+# PRIVATE END

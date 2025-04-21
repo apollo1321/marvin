@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+nix_version=$(nix --version 2> /dev/null)
+
+if [[ $? -eq 0 ]]; then
+  printf "Nix is already installed: $nix_version\n"
+  return
+fi
+
+printf "Installing Nix\n"
+sh <(curl -L https://nixos.org/nix/install) --yes
+
+if [[ $(uname) == "Darwin" ]]; then
+  source /nix/var/nix/profiles/default/etc/profile.d/nix.sh
+else
+  source ~/.nix-profile/etc/profile.d/nix.sh
+fi
+
+nix_version=$(nix --version)
+
+if [[ $? -ne 0 ]]; then
+  printf "I'm unable to install Nix. Please try installing Nix manually: https://nixos.org/download/.\n"
+  return 1
+else
+  printf "Installed $nix_version\n"
+fi

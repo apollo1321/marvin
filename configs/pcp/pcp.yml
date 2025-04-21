@@ -1,0 +1,31 @@
+cpp_default_profile: release-lines
+
+# PRIVATE BEGIN
+gitlab_url: https://gitlab.manytask.org
+course_public_repo: pcp/public-2025-spring
+course_students_group: pcp/students-2025-spring
+manytask_url: https://pcp.manytask.org
+
+cpp_lint_all_profiles:
+  - release
+
+exclude_patterns:
+  - "build*"
+  - "*private*"
+  - "Dockerfile"
+  - "compile_commands.json"
+  - "__pycache__"
+  - ".*"
+  - "lines/tests"
+
+include_patterns:
+  - ".gitlab-ci.yml"
+  - ".gitignore"
+  - ".clang-format"
+  - ".clang-tidy"
+  - '.task.yml'
+  - ".version*"
+
+modules:
+  - cpp
+# PRIVATE END

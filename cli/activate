@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+if [[ -n "$_CLI_ACTIVATED" ]]; then
+  printf "Cli is already activated. Please exit the current shell first.\n"
+  return 1
+fi
+
+nix_version=$(nix --version)
+
+if [[ $? -ne 0 ]]; then
+  printf "I'm unable to find Nix. Please try installing Nix using \`install_nix\` script.\n"
+  return 1
+else
+  printf "Using $nix_version\n"
+fi
+
+additional_args=()
+if [[ $(uname) == "Darwin" ]]; then
+  # On Apple Silicon Macs, use Rosetta to emulate x86_64 architecture.
+  additional_args=("--option" "system" "x86_64-darwin")
+fi
+
+new_args=()
+inplace=0
+
+for arg in "$@"; do
+    if [ "$arg" != "--inplace" ]; then
+        new_args+=("$arg")
+    else
+      inplace=1
+    fi
+done
+
+if [ "$inplace" -eq 1 ]; then
+  export PATH="$(nix --experimental-features 'nix-command flakes' build ${additional_args[@]} ./cli#cli --no-link --print-out-paths $new_args)/bin:$PATH"
+else
+  _CLI_ACTIVATED=1 nix --experimental-features 'nix-command flakes' shell ${additional_args[@]} ./cli#cli $@
+fi

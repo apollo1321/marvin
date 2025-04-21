@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name="cli"
+version="0.1.0"
+dependencies = [
+  "click",
+  "pyyaml",
+  "termcolor",
+  "pytimeparse",
+  # PRIVATE BEGIN
+  "requests",
+  "urllib3",
+  "python-gitlab",
+  "tqdm",
+  # PRIVATE END
+]
+
+[project.scripts]
+cli = "main:main"
