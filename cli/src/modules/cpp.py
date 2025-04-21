@@ -416,6 +416,15 @@ def clean():
         if path.is_dir() and path.name.startswith("build-"):
             shutil.rmtree(path)
 
+    for path in lib.get_build_directory().iterdir():
+        if path.is_dir() and not path.name == "go":
+            shutil.rmtree(path)
+
+    try:
+        os.remove(lib.get_build_directory() / ".version")
+    except OSError:
+        pass
+
 
 def lint_all() -> Generator[str]:
     source_files = _get_cpp_source_files()

@@ -26,8 +26,4 @@ include_patterns:
   - ".clang-tidy"
   - '.task.yml'
   - ".version*"
-
-modules:
-  - cpp
-  - go
 # PRIVATE END
