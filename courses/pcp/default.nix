@@ -7,13 +7,13 @@ with flake-utils.lib; eachSystem [ system.x86_64-linux system.x86_64-darwin ]
   in
   {
     packages = {
-      pcp_cli = (import ../../cli {
+      cli_pcp = (import ../../cli {
         inherit pkgs devEnv;
         configFile = ./config.yml;
         isPrivate = false;
       });
 
-      pcp_cli_private = (import ../../cli {
+      cli_pcp_private = (import ../../cli {
         inherit pkgs devEnv;
         configFile = ./config.yml;
         isPrivate = true;

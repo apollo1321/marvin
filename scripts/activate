@@ -31,8 +31,12 @@ for arg in "$@"; do
     fi
 done
 
+version=$(cat cli/version)
+package_path="github:apollo1321/marvin/${version}#cli_pcp"
+
 if [ "$inplace" -eq 1 ]; then
-  export PATH="$(nix --experimental-features 'nix-command flakes' build ${additional_args[@]} ./cli#cli --no-link --print-out-paths $new_args)/bin:$PATH"
+  export PATH="$(nix --experimental-features 'nix-command flakes' build ${additional_args[@]} $package_path --no-link --print-out-paths $new_args)/bin:$PATH"
+  export _CLI_VERSION="${version}"
 else
-  _CLI_ACTIVATED=1 nix --experimental-features 'nix-command flakes' shell ${additional_args[@]} ./cli#cli $@
+  _CLI_ACTIVATED=1 _CLI_VERSION="${version}" nix --experimental-features 'nix-command flakes' shell ${additional_args[@]} $package_path $@
 fi

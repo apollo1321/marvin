@@ -33,7 +33,7 @@ def check_cli_version():
 
 @click.group(cls=lib.OrderCommands)
 def cli():
-    """Marvin - manytask courses client."""
+    """Marvin - reproducible clients for educational courses."""
 
 
 @cli.command()
