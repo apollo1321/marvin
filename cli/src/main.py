@@ -14,6 +14,7 @@ VERSION = os.environ.get("_CLI_VERSION")
 def check_cli_version():
     if not VERSION:
         return
+
     try:
         with open(lib.get_course_directory() / "cli" / "version") as f:
             repo_version = f.read().strip()

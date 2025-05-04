@@ -49,6 +49,7 @@
 let
   allowedUserEnv = pkgs.lib.concatStringsSep "|" [
     ".*SSL.*"
+    "_CLI_VERSION"
     "TESTER_TOKEN"
     "GITLAB_API_TOKEN"
     "CI_PROJECT_NAME"
