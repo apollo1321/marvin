@@ -18,7 +18,6 @@ from termcolor import cprint
 
 SEP_SIZE = 79
 SYSTEM = os.environ["SYSTEM"]
-VERSION = os.environ["VERSION"]
 CONFIG_PATH = os.environ["CONFIG_PATH"]
 
 

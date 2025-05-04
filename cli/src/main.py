@@ -5,21 +5,25 @@ import lib
 import sys
 import os
 
+VERSION = os.environ.get("_CLI_VERSION")
+
 
 ################################################################################
 
 
 def check_cli_version():
+    if not VERSION:
+        return
     try:
-        with open(lib.get_course_directory() / "cli" / ".version") as f:
+        with open(lib.get_course_directory() / "cli" / "version") as f:
             repo_version = f.read().strip()
     except FileNotFoundError:
-        repo_version = "0.0.0"
+        repo_version = "None"
 
-    if repo_version != lib.VERSION:
+    if repo_version != VERSION:
         lib.print_fail(
             "Cli is outdated! Please reload cli. "
-            f"Version in repo {repo_version}, running {lib.VERSION}")
+            f"Version in repo {repo_version}, running {VERSION}")
 
 
 ################################################################################
