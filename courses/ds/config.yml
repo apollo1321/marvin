@@ -1,7 +1,7 @@
 cpp_codegen_target: codegen
 cpp_default_profile: release
 
-# PRIVATE BEGIN
+# Private config.
 gitlab_url: https://gitlab.manytask.org
 course_public_repo: hsse/ds/public-2024-fall
 course_students_group: hsse/ds/students-2024-fall
@@ -26,4 +26,3 @@ include_patterns:
   - ".clang-tidy"
   - '.task.yml'
   - ".version*"
-# PRIVATE END

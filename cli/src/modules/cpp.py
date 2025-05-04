@@ -69,7 +69,7 @@ def _build_executable(target: str, profile: str):
         target
     ]).check_returncode()
 
-    if lib.SYSTEM == "x86_64-darwin":
+    if lib.SYSTEM == "x86_64-darwin" and (build_directory / target).is_file():
         # It is necessary to generate .dSYM directory for symbolizers to work correctly.
         subprocess.run([
             "dsymutil",
@@ -212,7 +212,7 @@ def _setup_clion_workspace():
                     "PROJECT_NAME": project_name,
                     "TARGET_NAME": name,
                     "CONFIG_NAME": name,
-                    "RUN_PATH": f"$PROJECT_DIR$/build/{profile}/{target}"
+                    "RUN_PATH": str(_get_build_directory_for_profile(profile) / target)
                 })
             run_manager_method = ET.SubElement(run_manager_task_target, "method", {"v": "2"})
             ET.SubElement(

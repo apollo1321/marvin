@@ -10,12 +10,14 @@ dependencies = [
   "pyyaml",
   "termcolor",
   "pytimeparse",
-  # PRIVATE BEGIN
+]
+
+[project.optional-dependencies]
+private = [
   "requests",
   "urllib3",
   "python-gitlab",
   "tqdm",
-  # PRIVATE END
 ]
 
 [project.scripts]

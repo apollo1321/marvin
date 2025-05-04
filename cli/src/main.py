@@ -3,10 +3,8 @@
 import click
 import lib
 import sys
+import os
 
-# PRIVATE BEGIN
-import private
-# PRIVATE END
 
 ################################################################################
 
@@ -107,19 +105,16 @@ def list_tasks():
 
 lib.execute_for_each_module("add_commands", cli)
 
-# PRIVATE BEGIN
+if os.environ.get("PRIVATE"):
+    import private
 
-
-cli.add_command(private.check)
-cli.add_command(private.grade)
-cli.add_command(private.update_manytask)
-cli.add_command(private.export)
-cli.add_command(private.fix_ci_config_path)
-cli.add_command(private.fix_ci_config_timeout)
-cli.add_command(private.print_python_path)
-
-
-# PRIVATE END
+    cli.add_command(private.check)
+    cli.add_command(private.grade)
+    cli.add_command(private.update_manytask)
+    cli.add_command(private.export)
+    cli.add_command(private.fix_ci_config_path)
+    cli.add_command(private.fix_ci_config_timeout)
+    cli.add_command(private.print_python_path)
 
 ################################################################################
 

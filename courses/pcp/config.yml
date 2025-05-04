@@ -1,6 +1,6 @@
 cpp_default_profile: release-lines
 
-# PRIVATE BEGIN
+# Private config.
 gitlab_url: https://gitlab.manytask.org
 course_public_repo: pcp/public-2025-spring
 course_students_group: pcp/students-2025-spring
@@ -25,4 +25,3 @@ include_patterns:
   - ".clang-tidy"
   - '.task.yml'
   - ".version*"
-# PRIVATE END
