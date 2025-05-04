@@ -23,8 +23,9 @@ def check_cli_version():
 
     if repo_version != VERSION:
         lib.print_fail(
-            "Cli is outdated! Please reload cli. "
-            f"Version in repo {repo_version}, running {VERSION}")
+            "Cli is outdated! Please reload cli.\n"
+            f"Version in repo: {repo_version}\n"
+            f"Version running: {VERSION}")
 
 
 ################################################################################
