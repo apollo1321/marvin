@@ -314,6 +314,7 @@ def grade(student_repo: Path, report: bool = False):
         student_repo,
         "diff-tree",
         "-r",
+        "-m",  # Show diff for merge commits.
         "--no-commit-id",
         "--name-only",
         "HEAD"
