@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 
 if [[ -n "$_CLI_ACTIVATED" ]]; then
-  printf "Cli is already activated. Please exit the current shell first.\n"
+  printf "Cli is already activated. Please exit the current shell first.\n" >&2
   return 1
 fi
 
-nix_version=$(nix --version)
+nix_version=$(nix --version 2>/dev/null)
 
 if [[ $? -ne 0 ]]; then
-  printf "I'm unable to find Nix. Please try installing Nix using \`install_nix\` script.\n"
+  printf "I'm unable to find Nix. Please try installing Nix using \`install_nix\` script.\n" >&2
   return 1
 else
-  printf "Using $nix_version\n"
+  printf "Using $nix_version\n" >&2
 fi
 
 additional_args=()
@@ -35,8 +35,15 @@ version=$(cat cli/version)
 package_path="github:apollo1321/marvin/${version}#cli_pcp"
 
 if [ "$inplace" -eq 1 ]; then
-  export PATH="$(nix --experimental-features 'nix-command flakes' build ${additional_args[@]} $package_path --no-link --print-out-paths $new_args)/bin:$PATH"
+  if [[ -n "$_CLI_PATH" ]]; then
+    aux=":${PATH}:"
+    aux=${aux//:$_CLI_PATH:/:}; aux=${aux#:}; aux=${aux%:}
+    printf -v "PATH" '%s' "$aux"
+  fi
+
+  export _CLI_PATH="$(nix --experimental-features 'nix-command flakes' build ${additional_args[@]} $package_path --no-link --print-out-paths $new_args)/bin"
   export _CLI_VERSION="${version}"
+  export PATH="$_CLI_PATH:$PATH"
 else
   _CLI_ACTIVATED=1 _CLI_VERSION="${version}" nix --experimental-features 'nix-command flakes' shell ${additional_args[@]} $package_path $@
 fi

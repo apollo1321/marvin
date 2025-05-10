@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+if [[ ! -x /nix/nix-installer ]]; then
+  printf "Cannot uninstall nix. Probably it was not installed by \`install_nix\` script.\n" >&2
+  return 1
+fi
+
+/nix/nix-installer uninstall $@
