@@ -201,3 +201,13 @@ def print_failed_checks_and_exit(failed_checks: list[str]):
         cprinte("Checks succeded", "green", attrs=["bold"])
 
     sys.exit(1 if len(failed_checks) > 0 else 0)
+
+
+@cache
+def is_linux() -> bool:
+    return "linux" in SYSTEM
+
+
+@cache
+def is_darwin() -> bool:
+    return "darwin" in SYSTEM

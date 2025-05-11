@@ -70,7 +70,7 @@ def _build_executable(target: str, profile: str):
         target
     ]).check_returncode()
 
-    if lib.SYSTEM == "x86_64-darwin" and (build_directory / target).is_file():
+    if lib.is_darwin() and (build_directory / target).is_file():
         # It is necessary to generate .dSYM directory for symbolizers to work correctly.
         subprocess.run([
             "dsymutil",
@@ -344,6 +344,13 @@ def _get_clangd_path() -> str:
     ])[:-1].decode()
 
 
+def _get_gdb_path() -> str:
+    return subprocess.check_output([
+        "which",
+        "gdb",
+    ])[:-1].decode()
+
+
 def _get_test_name(task_name: str, target: str, profile: str) -> str:
     return f"{task_name}#cpp.test.{target}.{profile}"
 
@@ -360,7 +367,7 @@ def _setup_vscode_extensions():
     extensions = {
         "recommendations": [
             "llvm-vs-code-extensions.vscode-clangd",
-            "vadimcn.vscode-lldb" if "darwin" in lib.SYSTEM else "kylinideteam.cppdebug",
+            "vadimcn.vscode-lldb" if lib.is_darwin() else "kylinideteam.cppdebug",
         ]
     }
 
@@ -405,12 +412,17 @@ def _setup_vscode_launch():
                 executable = _get_build_directory_for_profile(profile) / target
                 executable_relative = executable.relative_to(lib.get_course_directory())
                 configurations.append({
-                    "type": "lldb",
+                    "type": "lldb" if lib.is_darwin() else "cppdbg",
                     "request": "launch",
                     "name": _get_test_name(task["task_name"], target, profile),
                     "program": "${workspaceFolder}/" + str(executable_relative),
                     "preLaunchTask": f"Build {_get_test_name(task['task_name'], target, profile)}",
-                })
+                } | {
+                    "MIMode": "gdb",
+                    "miDebuggerPath": _get_gdb_path(),
+                    "cwd": "${workspaceFolder}/" + str(_get_build_directory_for_profile(profile)
+                                                       .relative_to(lib.get_course_directory())),
+                } if lib.is_linux() else {})
 
     with open(lib.get_course_directory() / ".vscode" / "launch.json", "w") as f:
         json.dump({"configurations": configurations}, f, indent=4)
