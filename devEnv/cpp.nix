@@ -32,6 +32,7 @@ llvmPackages.stdenv.mkDerivation {
     which
     gtest
   ] ++ lib.optionals (stdenv.isLinux) [
+    gdb
     bubblewrap # Utility to run tests in an isolated environment.
   ] ++ lib.optionals (stdenv.isDarwin) [
     cctools # Needed for install_name_tool.
