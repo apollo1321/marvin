@@ -347,6 +347,75 @@ def _get_clangd_path() -> str:
 def _get_test_name(task_name: str, target: str, profile: str) -> str:
     return f"{task_name}#cpp.test.{target}.{profile}"
 
+
+def _configure_and_copy_compile_commands(profile: str):
+    _configure_single_profile(profile)
+
+    shutil.copy(
+        _get_build_directory_for_profile(profile) / "compile_commands.json",
+        lib.get_course_directory())
+
+
+def _setup_vscode_extensions():
+    extensions = {
+        "recommendations": [
+            "llvm-vs-code-extensions.vscode-clangd",
+            "vadimcn.vscode-lldb" if "darwin" in lib.SYSTEM else "kylinideteam.cppdebug",
+        ]
+    }
+
+    with open(lib.get_course_directory() / ".vscode" / "extensions.json", "w") as f:
+        json.dump(extensions, f, indent=4)
+
+
+def _setup_vscode_settings():
+    settings = {
+        "clangd.path": _get_clangd_path(),
+        "[cpp]": {
+            "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+        }
+    }
+
+    with open(lib.get_course_directory() / ".vscode" / "settings.json", "w") as f:
+        json.dump(settings, f, indent=4)
+
+
+def _setup_vscode_tasks():
+    tasks = []
+
+    for task in lib.load_all_tasks():
+        for target in task.get("cpp_targets", []):
+            for profile in task["cpp_targets"][target]["profiles"]:
+                tasks.append({
+                    "label": f"Build {_get_test_name(task['task_name'], target, profile)}",
+                    "type": "shell",
+                    "command": f"{lib.get_cli_path()} build -p {profile} -t {target} --all",
+                })
+
+    with open(lib.get_course_directory() / ".vscode" / "tasks.json", "w") as f:
+        json.dump({"tasks": tasks}, f, indent=4)
+
+
+def _setup_vscode_launch():
+    configurations = []
+
+    for task in lib.load_all_tasks():
+        for target in task.get("cpp_targets", []):
+            for profile in task["cpp_targets"][target]["profiles"]:
+                executable = _get_build_directory_for_profile(profile) / target
+                executable_relative = executable.relative_to(lib.get_course_directory())
+                configurations.append({
+                    "type": "lldb",
+                    "request": "launch",
+                    "name": _get_test_name(task["task_name"], target, profile),
+                    "program": "${workspaceFolder}/" + str(executable_relative),
+                    "preLaunchTask": f"Build {_get_test_name(task['task_name'], target, profile)}",
+                })
+
+    with open(lib.get_course_directory() / ".vscode" / "launch.json", "w") as f:
+        json.dump({"configurations": configurations}, f, indent=4)
+
+
 ################################################################################
 
 
@@ -488,11 +557,7 @@ def check_config(task: dict):
               help="Profile to use for autocompletion.")
 def configure(profile: str):
     """Configure profile for autocompletion."""
-    _configure_single_profile(profile)
-
-    shutil.copy(
-        _get_build_directory_for_profile(profile) / "compile_commands.json",
-        lib.get_course_directory())
+    _configure_and_copy_compile_commands(profile)
 
 
 @click.command()
@@ -542,9 +607,12 @@ def build(profiles: tuple[str], targets: tuple[str], build_all=False):
 
 
 @click.command()
+@click.option("-p", "--profile",
+              default=lib.load_config()["cpp_default_profile"], show_default=True,
+              help="Profile to use for autocompletion.")
 @click.option("--confirm", is_flag=True,
               help="Do not ask for confirmation.")
-def setup_vscode(confirm: bool = False):
+def setup_vscode(profile: str, confirm: bool = False):
     """Setup VS Code workspace."""
     vscode_directory = lib.get_course_directory() / ".vscode"
     if vscode_directory.exists():
@@ -557,57 +625,12 @@ def setup_vscode(confirm: bool = False):
 
     vscode_directory.mkdir()
 
-    extensions = {
-        "recommendations": [
-            "llvm-vs-code-extensions.vscode-clangd",
-            "kylinideteam.cppdebug" if "darwin" in lib.SYSTEM else "vadimcn.vscode-lldb",
-        ]
-    }
+    _setup_vscode_extensions()
+    _setup_vscode_settings()
+    _setup_vscode_tasks()
+    _setup_vscode_launch()
 
-    with open(vscode_directory / "extensions.json", "w") as f:
-        json.dump(extensions, f, indent=4)
-
-    settings = {
-        "clangd.path": _get_clangd_path(),
-        "[cpp]": {
-            "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
-        }
-    }
-
-    with open(vscode_directory / "settings.json", "w") as f:
-        json.dump(settings, f, indent=4)
-
-    tasks = []
-
-    for task in lib.load_all_tasks():
-        for target in task.get("cpp_targets", []):
-            for profile in task["cpp_targets"][target]["profiles"]:
-                tasks.append({
-                    "label": f"Build {_get_test_name(task['task_name'], target, profile)}",
-                    "type": "shell",
-                    "command": f"{lib.get_cli_path()} build -p {profile} -t {target} --all",
-                })
-
-    with open(vscode_directory / "tasks.json", "w") as f:
-        json.dump({"tasks": tasks}, f, indent=4)
-
-    configurations = []
-
-    for task in lib.load_all_tasks():
-        for target in task.get("cpp_targets", []):
-            for profile in task["cpp_targets"][target]["profiles"]:
-                executable = _get_build_directory_for_profile(profile) / target
-                executable_relative = executable.relative_to(lib.get_course_directory())
-                configurations.append({
-                    "type": "lldb",
-                    "request": "launch",
-                    "name": _get_test_name(task["task_name"], target, profile),
-                    "program": "${workspaceFolder}/" + str(executable_relative),
-                    "preLaunchTask": f"Build {_get_test_name(task['task_name'], target, profile)}",
-                })
-
-    with open(vscode_directory / "launch.json", "w") as f:
-        json.dump({"configurations": configurations}, f, indent=4)
+    _configure_and_copy_compile_commands(profile)
 
 
 ################################################################################
