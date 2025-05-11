@@ -1,4 +1,5 @@
 import click
+import json
 import lib
 import os
 import shutil
@@ -336,6 +337,16 @@ def _run_fix_format(source_files: list[str]):
     ).check_returncode()
 
 
+def _get_clangd_path() -> str:
+    return subprocess.check_output([
+        "which",
+        "clangd",
+    ])[:-1].decode()
+
+
+def _get_test_name(task_name: str, target: str, profile: str) -> str:
+    return f"{task_name}#cpp.test.{target}.{profile}"
+
 ################################################################################
 
 
@@ -354,7 +365,7 @@ def run_tests(
             if profiles and profile not in profiles:
                 continue
 
-            check_name = f"{task["task_name"]}#cpp.test.{target}.{profile}"
+            check_name = _get_test_name(task["task_name"], target, profile)
             if not _run_single_test(check_name, target, profile, sandbox, timeout, filter):
                 yield check_name
 
@@ -500,10 +511,7 @@ def setup_clion():
 @click.command()
 def clangd_path():
     """Print clangd path."""
-    print(subprocess.check_output([
-        "which",
-        "clangd",
-    ])[:-1].decode())
+    print(_get_clangd_path())
 
 
 @click.command()
@@ -533,6 +541,75 @@ def build(profiles: tuple[str], targets: tuple[str], build_all=False):
                     _build_executable(target, profile)
 
 
+@click.command()
+@click.option("--confirm", is_flag=True,
+              help="Do not ask for confirmation.")
+def setup_vscode(confirm: bool = False):
+    """Setup VS Code workspace."""
+    vscode_directory = lib.get_course_directory() / ".vscode"
+    if vscode_directory.exists():
+        if not confirm:
+            click.confirm(
+                "VS Code project already exists, do you want to reconfigure it? "
+                "Current settings will be removed.",
+                abort=True)
+        shutil.rmtree(vscode_directory)
+
+    vscode_directory.mkdir()
+
+    extensions = {
+        "recommendations": [
+            "llvm-vs-code-extensions.vscode-clangd",
+            "kylinideteam.cppdebug" if "darwin" in lib.SYSTEM else "vadimcn.vscode-lldb",
+        ]
+    }
+
+    with open(vscode_directory / "extensions.json", "w") as f:
+        json.dump(extensions, f, indent=4)
+
+    settings = {
+        "clangd.path": _get_clangd_path(),
+        "[cpp]": {
+            "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+        }
+    }
+
+    with open(vscode_directory / "settings.json", "w") as f:
+        json.dump(settings, f, indent=4)
+
+    tasks = []
+
+    for task in lib.load_all_tasks():
+        for target in task.get("cpp_targets", []):
+            for profile in task["cpp_targets"][target]["profiles"]:
+                tasks.append({
+                    "label": f"Build {_get_test_name(task['task_name'], target, profile)}",
+                    "type": "shell",
+                    "command": f"{lib.get_cli_path()} build -p {profile} -t {target} --all",
+                })
+
+    with open(vscode_directory / "tasks.json", "w") as f:
+        json.dump({"tasks": tasks}, f, indent=4)
+
+    configurations = []
+
+    for task in lib.load_all_tasks():
+        for target in task.get("cpp_targets", []):
+            for profile in task["cpp_targets"][target]["profiles"]:
+                executable = _get_build_directory_for_profile(profile) / target
+                executable_relative = executable.relative_to(lib.get_course_directory())
+                configurations.append({
+                    "type": "lldb",
+                    "request": "launch",
+                    "name": _get_test_name(task["task_name"], target, profile),
+                    "program": "${workspaceFolder}/" + str(executable_relative),
+                    "preLaunchTask": f"Build {_get_test_name(task['task_name'], target, profile)}",
+                })
+
+    with open(vscode_directory / "launch.json", "w") as f:
+        json.dump({"configurations": configurations}, f, indent=4)
+
+
 ################################################################################
 
 
@@ -541,6 +618,7 @@ def add_commands(cli: click.Group):
     cli.add_command(build)
     cli.add_command(clangd_path)
     cli.add_command(setup_clion)
+    cli.add_command(setup_vscode)
 
 
 ################################################################################
