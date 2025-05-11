@@ -38,7 +38,9 @@ if [ "$private" -eq 1 ]; then
   package_name="cli_pcp_private"
 fi
 
-version=$(cat cli/version)
+read version < "cli/version"
+printf "Using cli version '${version}'.\n" >&2
+
 package_path="github:apollo1321/marvin/${version}#${package_name}"
 
 if [ "$inplace" -eq 1 ]; then
@@ -50,7 +52,7 @@ if [ "$inplace" -eq 1 ]; then
 
   export _CLI_PATH="$(nix --experimental-features 'nix-command flakes' build ${additional_args[@]} $package_path --no-link --print-out-paths)/bin"
   export _CLI_VERSION="${version}"
-  export PATH="$_CLI_PATH:$PATH"
+  export PATH="$_CLI_PATH${PATH:+:${PATH}}"
 else
   _CLI_ACTIVATED=1 _CLI_VERSION="${version}" nix --experimental-features 'nix-command flakes' shell ${additional_args[@]} $package_path
 fi
