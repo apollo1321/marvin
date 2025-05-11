@@ -14,25 +14,32 @@ else
   printf "Using $nix_version\n" >&2
 fi
 
+inplace=0
+private=0
+
 additional_args=()
 if [[ $(uname) == "Darwin" ]]; then
   # On Apple Silicon Macs, use Rosetta to emulate x86_64 architecture.
   additional_args=("--option" "system" "x86_64-darwin")
 fi
 
-new_args=()
-inplace=0
-
 for arg in "$@"; do
-    if [ "$arg" != "--inplace" ]; then
-        new_args+=("$arg")
-    else
+    if [ "$arg" = "--inplace" ]; then
       inplace=1
+    elif [ "$arg" = "--private" ]; then
+      private=1
+    else
+      additional_args+=("$arg")
     fi
 done
 
+package_name="cli_pcp"
+if [ "$private" -eq 1 ]; then
+  package_name="cli_pcp_private"
+fi
+
 version=$(cat cli/version)
-package_path="github:apollo1321/marvin/${version}#cli_pcp"
+package_path="github:apollo1321/marvin/${version}#${package_name}"
 
 if [ "$inplace" -eq 1 ]; then
   if [[ -n "$_CLI_PATH" ]]; then
@@ -41,9 +48,9 @@ if [ "$inplace" -eq 1 ]; then
     printf -v "PATH" '%s' "$aux"
   fi
 
-  export _CLI_PATH="$(nix --experimental-features 'nix-command flakes' build ${additional_args[@]} $package_path --no-link --print-out-paths $new_args)/bin"
+  export _CLI_PATH="$(nix --experimental-features 'nix-command flakes' build ${additional_args[@]} $package_path --no-link --print-out-paths)/bin"
   export _CLI_VERSION="${version}"
   export PATH="$_CLI_PATH:$PATH"
 else
-  _CLI_ACTIVATED=1 _CLI_VERSION="${version}" nix --experimental-features 'nix-command flakes' shell ${additional_args[@]} $package_path $@
+  _CLI_ACTIVATED=1 _CLI_VERSION="${version}" nix --experimental-features 'nix-command flakes' shell ${additional_args[@]} $package_path
 fi
