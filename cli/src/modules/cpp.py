@@ -224,6 +224,18 @@ def _setup_clion_workspace():
                     "enabled": "true"
                 }
             )
+            run_manager_env = ET.SubElement(run_manager_task_target, "envs")
+            for name, value in [
+                    ("ASAN_SYMBOLIZER_PATH", ASAN_SYMBOLIZER_PATH),
+                    ("TSAN_SYMBOLIZER_PATH", TSAN_SYMBOLIZER_PATH)]:
+                ET.SubElement(
+                    run_manager_env,
+                    "env",
+                    {
+                        "name": name,
+                        "value": value,
+                    }
+                )
 
     ET.indent(workspace_tree, space="  ", level=0)
     workspace_tree.write(workspace_path)
@@ -355,6 +367,10 @@ def _get_test_name(task_name: str, target: str, profile: str) -> str:
     return f"{task_name}#cpp.test.{target}.{profile}"
 
 
+def _get_vscode_build_label(test_name: str) -> str:
+    return f"Build: {test_name}"
+
+
 def _configure_and_copy_compile_commands(profile: str):
     _configure_single_profile(profile)
 
@@ -394,13 +410,22 @@ def _setup_vscode_tasks():
         for target in task.get("cpp_targets", []):
             for profile in task["cpp_targets"][target]["profiles"]:
                 tasks.append({
-                    "label": f"Build {_get_test_name(task['task_name'], target, profile)}",
+                    "label": _get_vscode_build_label(_get_test_name(task['task_name'], target, profile)),
                     "type": "shell",
                     "command": f"{lib.get_cli_path()} build -p {profile} -t {target} --all",
                 })
 
+                tasks.append({
+                    "label": f"Test: {_get_test_name(task['task_name'], target, profile)}",
+                    "type": "shell",
+                    "command": f"{lib.get_cli_path()} test -p {profile}",
+                    "options": {
+                        "cwd": "${workspaceFolder}/" + task["task_name"]
+                    },
+                })
+
     with open(lib.get_course_directory() / ".vscode" / "tasks.json", "w") as f:
-        json.dump({"tasks": tasks}, f, indent=4)
+        json.dump({"version": "2.0.0", "tasks": tasks}, f, indent=4)
 
 
 def _setup_vscode_launch():
@@ -416,13 +441,28 @@ def _setup_vscode_launch():
                     "request": "launch",
                     "name": _get_test_name(task["task_name"], target, profile),
                     "program": "${workspaceFolder}/" + str(executable_relative),
-                    "preLaunchTask": f"Build {_get_test_name(task['task_name'], target, profile)}",
+                    "preLaunchTask": _get_vscode_build_label(_get_test_name(task['task_name'], target, profile)),
                 } | ({
                     "MIMode": "gdb",
                     "miDebuggerPath": _get_gdb_path(),
                     "cwd": "${workspaceFolder}/" + str(_get_build_directory_for_profile(profile)
                                                        .relative_to(lib.get_course_directory())),
-                } if lib.is_linux() else {}))
+                    "environment": [
+                        {
+                            "name": "ASAN_SYMBOLIZER_PATH",
+                            "value": ASAN_SYMBOLIZER_PATH,
+                        },
+                        {
+                            "name": "TSAN_SYMBOLIZER_PATH",
+                            "value": TSAN_SYMBOLIZER_PATH,
+                        },
+                    ],
+                } if lib.is_linux() else {
+                    "env": {
+                        "ASAN_SYMBOLIZER_PATH": ASAN_SYMBOLIZER_PATH,
+                        "TSAN_SYMBOLIZER_PATH": TSAN_SYMBOLIZER_PATH,
+                    }
+                }))
 
     with open(lib.get_course_directory() / ".vscode" / "launch.json", "w") as f:
         json.dump({"configurations": configurations}, f, indent=4)
