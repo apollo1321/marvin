@@ -417,12 +417,12 @@ def _setup_vscode_launch():
                     "name": _get_test_name(task["task_name"], target, profile),
                     "program": "${workspaceFolder}/" + str(executable_relative),
                     "preLaunchTask": f"Build {_get_test_name(task['task_name'], target, profile)}",
-                } | {
+                } | ({
                     "MIMode": "gdb",
                     "miDebuggerPath": _get_gdb_path(),
                     "cwd": "${workspaceFolder}/" + str(_get_build_directory_for_profile(profile)
                                                        .relative_to(lib.get_course_directory())),
-                } if lib.is_linux() else {})
+                } if lib.is_linux() else {}))
 
     with open(lib.get_course_directory() / ".vscode" / "launch.json", "w") as f:
         json.dump({"configurations": configurations}, f, indent=4)
