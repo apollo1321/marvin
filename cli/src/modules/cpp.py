@@ -691,9 +691,9 @@ def setup_vscode(profile: str, confirm: bool = False):
 def add_commands(cli: click.Group):
     cli.add_command(configure)
     cli.add_command(build)
-    cli.add_command(clangd_path)
     cli.add_command(setup_clion)
     cli.add_command(setup_vscode)
+    cli.add_command(clangd_path)
 
 
 ################################################################################

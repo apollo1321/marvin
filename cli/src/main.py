@@ -109,24 +109,6 @@ def list_tasks():
     for task in lib.load_all_tasks():
         print(task["task_name"])
 
-
-@cli.command()
-@click.option("--confirm", is_flag=True,
-              help="Do not ask for confirmation.")
-def setup_vscode(confirm: bool = False):
-    """Setup VS Code workspace."""
-
-    vscode_directory = lib.get_course_directory() / ".vscode"
-    if vscode_directory.exists():
-        if not confirm:
-            click.confirm(
-                "VS Code project already exists, do you want to reconfigure it? Current settings will be removed.",
-                abort=True)
-        shutil.rmtree(vscode_directory)
-
-    vscode_directory.mkdir()
-
-
 lib.execute_for_each_module("add_commands", cli)
 
 if os.environ.get("PRIVATE"):
