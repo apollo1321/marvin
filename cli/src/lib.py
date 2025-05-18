@@ -6,6 +6,7 @@ import sys
 import yaml
 import types
 
+from rich.rule import Rule
 from rich.text import Text
 from rich.style import Style
 from rich.console import Console, RenderableType
@@ -201,8 +202,9 @@ def execute_for_each_module_yielding(function_name: str, *args, **kwargs) -> Gen
 
 
 def print_failed_checks_and_exit(failed_checks: list[str]):
-    error_console.rule("[bold cyan]Summary", characters="═", style=Style(color="cyan"))
-    error_console.print()
+    error_console.print(
+        Rule("[bold cyan]Summary", characters="═", style=Style(color="cyan")),
+        width=CONSOLE_WIDTH)
 
     if failed_checks:
         has_format_errors = False
