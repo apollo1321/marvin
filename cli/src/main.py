@@ -28,7 +28,7 @@ def check_cli_version():
         repo_version = "None"
 
     if repo_version != VERSION:
-        lib.print_fail(
+        lib.print_warning(
             "Cli is outdated! Please reload cli.\n"
             f"Version in repo: {repo_version}\n"
             f"Version running: {VERSION}")
@@ -132,10 +132,6 @@ def list_tasks():
     traverse(tree, tree_root)
 
     lib.console.print(tree)
-
-    items = ['apple', 'banana', 'orange']
-    md = Markdown('\n'.join(f"- {item}" for item in items))
-    lib.console.print(md)
 
 
 lib.execute_for_each_module("add_commands", cli)
