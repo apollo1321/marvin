@@ -1,10 +1,15 @@
 #!/usr/bin/env python
 
-import click
 import lib
 import os
-import shutil
 import sys
+
+from rich.markdown import Markdown
+from rich.tree import Tree
+
+import rich_click as click
+import rich_click.rich_click as rc
+
 
 VERSION = os.environ.get("_CLI_VERSION")
 
@@ -32,9 +37,13 @@ def check_cli_version():
 ################################################################################
 
 
-@click.group(cls=lib.OrderCommands)
+@click.group()
 def cli():
-    """Marvin - reproducible clients for educational courses."""
+    """
+    Marvin — the code assistant with a brain the size of a planet (but happy to
+    help you with your homework anyway). Seamlessly build, check, and submit
+    your course assignments.
+    """
 
 
 @cli.command()
@@ -106,10 +115,64 @@ def clean(module: str | None = None):
 @cli.command()
 def list_tasks():
     """List all available course tasks."""
+    tree_root = {}
     for task in lib.load_all_tasks():
-        print(task["task_name"])
+        current = tree_root
+        for part in task["task_name"].split("/"):
+            if not current.get(part):
+                current[part] = {}
+            current = current[part]
+
+    tree = Tree("[bold]Tasks:")
+
+    def traverse(current_node: Tree, current: dict):
+        for name, value in current.items():
+            traverse(current_node.add(name), value)
+
+    traverse(tree, tree_root)
+
+    lib.console.print(tree)
+
+    items = ['apple', 'banana', 'orange']
+    md = Markdown('\n'.join(f"- {item}" for item in items))
+    lib.console.print(md)
+
 
 lib.execute_for_each_module("add_commands", cli)
+
+
+################################################################################
+
+
+rc.MAX_WIDTH = lib.CONSOLE_WIDTH
+rc.STYLE_OPTIONS_PANEL_BOX = "SQUARE"
+rc.STYLE_COMMANDS_PANEL_BOX = "SQUARE"
+rc.STYLE_ERRORS_PANEL_BOX = "SQUARE"
+rc.ALIGN_COMMANDS_PANEL = "center"
+rc.ALIGN_OPTIONS_PANEL = "center"
+rc.ALIGN_ERRORS_PANEL = "center"
+rc.STYLE_COMMANDS_TABLE_COLUMN_WIDTH_RATIO = (2, 8)
+
+rc.COMMAND_GROUPS = {
+    "*": [
+        {
+            "name": "Checks Commands",
+            "commands": [run_checks.name, test.name, lint.name, format.name]
+        },
+        {
+            "name": "Build & Setup Commands",
+            "commands": [clean.name, "build", "configure"]
+        },
+        {
+            "name": "Task Management Commands",
+            "commands": [list_tasks.name]
+        },
+        {
+            "name": "IDE Integration Commands",
+            "commands": ["setup-vscode", "setup-clion", "clangd-path"]
+        },
+    ],
+}
 
 if os.environ.get("PRIVATE"):
     import private
@@ -121,6 +184,28 @@ if os.environ.get("PRIVATE"):
     cli.add_command(private.fix_ci_config_path)
     cli.add_command(private.fix_ci_config_timeout)
     cli.add_command(private.print_python_path)
+
+    rc.COMMAND_GROUPS["*"].append({
+        "name": "Staff Commands",
+        "commands": [getattr(getattr(private, command), "name") for command in [
+                "check",
+                "grade",
+                "update_manytask",
+                "export",
+                "fix_ci_config_path",
+                "fix_ci_config_timeout",
+                "print_python_path"
+        ]],
+    })
+    rc.COMMAND_GROUPS["cli check*"] = [
+        {
+            "name": "Staff Commands",
+            "commands": [str(command) for command in private.check.commands],
+        },
+    ]
+
+    rc.STYLE_COMMANDS_TABLE_COLUMN_WIDTH_RATIO = (2, 5)
+
 
 ################################################################################
 

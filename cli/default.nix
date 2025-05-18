@@ -25,9 +25,10 @@
       pythonPackages =
         with pkgs.python312Packages; [
           click
-          pyyaml
-          termcolor
           pytimeparse
+          pyyaml
+          rich
+          rich-click
         ] ++ pkgs.lib.optionals (isPrivate) [
           requests
           urllib3
@@ -48,6 +49,7 @@
 }).overrideAttrs (finalAttrs: previousAttrs:
 let
   allowedUserEnv = pkgs.lib.concatStringsSep "|" [
+    "TERM"
     ".*SSL.*"
     "_CLI_VERSION"
     "TESTER_TOKEN"

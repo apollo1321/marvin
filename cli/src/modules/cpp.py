@@ -1,4 +1,4 @@
-import click
+import rich_click as click
 import json
 import lib
 import os
@@ -7,6 +7,8 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
+
+from rich.prompt import Confirm
 from collections.abc import Generator
 from functools import cache
 from pathlib import Path
@@ -44,23 +46,12 @@ def _get_source_and_header_files() -> list[Path]:
     return lib.get_files(SOURCE_EXT | HEADER_EXT)
 
 
-def _check_compile_commands():
-    if not _get_cpp_build_directory().exists():
-        return
-
-    if not (lib.get_course_directory() / "compile_commands.json").exists():
-        lib.print_start(
-            "Compile commands are not exported, completion may not work correctly.\n"
-            "Please run `cli configure` to export compile commands")
-        lib.cprinte("")
-
-
 def _build_executable(target: str, profile: str):
     build_directory = _get_build_directory_for_profile(profile)
 
-    lib.cprinte(
-        f"Building target {target}.{profile} in build directory {build_directory}",
-        "cyan")
+    lib.print_inline_info(
+        f"Building target {target}.{profile} in build directory {build_directory}"
+    )
 
     subprocess.run([
         "cmake",
@@ -85,7 +76,7 @@ def _run_single_test(
         sandbox: bool,
         timeout: float,
         filter: str | None = None) -> bool:
-    lib.print_start(f"Running test {check_name}")
+    lib.print_info(f"Running test {check_name}")
 
     try:
         _configure_single_profile(profile)
@@ -93,7 +84,9 @@ def _run_single_test(
 
         build_directory = _get_build_directory_for_profile(profile)
 
-        lib.cprinte(f"Running test {check_name} with timeout {timeout} seconds", "cyan")
+        lib.print_inline_info(
+            f"Running test {check_name} with timeout {timeout} seconds",
+        )
 
         if not sandbox:
             subprocess.run(
@@ -123,12 +116,12 @@ def _run_single_test(
             ] + ([filter] if filter else []),
                 timeout=timeout).check_returncode()
     except subprocess.CalledProcessError as error:
-        lib.cprinte(str(error))
-        lib.print_fail(f"Test {check_name} failed")
+        lib.print_inline_info(str(error))
+        lib.print_error(f"Test {check_name} failed")
         return False
     except subprocess.TimeoutExpired as error:
-        lib.cprinte(str(error))
-        lib.print_fail(f"Test {check_name} timed out")
+        lib.print_inline_info(str(error))
+        lib.print_error(f"Test {check_name} timed out")
         return False
     else:
         lib.print_success(f"Test {check_name} succeded")
@@ -149,9 +142,9 @@ def _configure_single_profile(profile: str):
         (build_directory / ".version").write_text(VERSION_BUILD)
 
     build_directory = _get_build_directory_for_profile(profile)
-    lib.cprinte(
-        f"Configuring profile {profile} in build directory {build_directory}",
-        "cyan")
+    lib.print_inline_info(
+        f"Configuring profile {profile} in build directory {build_directory}"
+    )
 
     subprocess.run([
         "cmake",
@@ -326,9 +319,9 @@ def _setup_clion_tools():
 
 def _run_linter(profile: str, lint_files: list[str]):
     _configure_single_profile(profile)
-    lib.cprinte(
-        "Running linter",
-        "cyan")
+    lib.print_inline_info(
+        "Running linter"
+    )
     subprocess.run(
         ["clang-tidy", "-p", _get_build_directory_for_profile(profile),
          "--config-file", lib.get_course_directory() / ".clang-tidy"] + lint_files
@@ -500,12 +493,12 @@ def run_linter(task: dict) -> Generator[str]:
 
         check_name = f"{task["task_name"]}#cpp.lint.{profile}"
 
-        lib.print_start(f"Running lint check {check_name} for {len(lint_files)} file(s)")
+        lib.print_info(f"Running lint check {check_name} for {len(lint_files)} file(s)")
 
         try:
             _run_linter(profile, lint_files)
         except subprocess.CalledProcessError:
-            lib.print_fail(f"Lint check with profile {profile} failed")
+            lib.print_error(f"Lint check with profile {profile} failed")
             yield check_name
         else:
             lib.print_success(f"Lint check with profile {profile} succeded")
@@ -520,17 +513,17 @@ def run_format(task: dict, fix: bool = False) -> Generator[str]:
         return
 
     if fix:
-        lib.cprinte(f"Fixing format for {len(source_files)} files", "yellow", attrs=["bold"])
+        lib.print_inline_info(f"Fixing format for {len(source_files)} files",)
         _run_fix_format(source_files)
         return
 
     check_name = f"{task["task_name"]}#cpp.format"
-    lib.print_start(f"Running format check {check_name} for {len(source_files)} file(s)")
+    lib.print_info(f"Running format check {check_name} for {len(source_files)} file(s)")
 
     try:
         _run_format(source_files)
     except subprocess.CalledProcessError:
-        lib.print_fail("Format check failed")
+        lib.print_error("Format check failed")
         yield check_name
     else:
         lib.print_success("Format check succeded")
@@ -587,16 +580,16 @@ def format_all(fix: bool) -> Generator[str]:
         try:
             _run_format(source_files)
         except subprocess.CalledProcessError:
-            lib.print_fail("Format check failed")
+            lib.print_error("Format check failed")
             yield "private#format"
 
 
 def check_config(task: dict):
     for target in task.get("cpp_targets", []):
         if not task["cpp_targets"][target].get("timeout"):
-            lib.cprinte(
-                f"Timeout is not set for task {task['task_name']}.\n",
-                "red", attrs=["bold"])
+            lib.print_error(
+                f"Timeout is not set for task {task['task_name']}.\n"
+            )
             sys.exit(1)
 
 
@@ -616,8 +609,7 @@ def configure(profile: str):
 def setup_clion():
     """Setup CLion targets."""
     if not (lib.get_course_directory() / ".idea").exists():
-        lib.cprinte("Idea project does not exist. Please open the project in CLion first.",
-                    "red", attrs=["bold"])
+        lib.print_error("Idea project does not exist. Please open the project in CLion first.")
         sys.exit(1)
 
     _setup_clion_tools()
@@ -669,10 +661,12 @@ def setup_vscode(profile: str, confirm: bool = False):
     vscode_directory = lib.get_course_directory() / ".vscode"
     if vscode_directory.exists():
         if not confirm:
-            click.confirm(
-                "VS Code project already exists, do you want to reconfigure it? "
+            result = Confirm.ask(
+                "[yellow]VS Code project already exists, do you want to reconfigure it? "
                 "Current settings will be removed.",
-                abort=True)
+                console=lib.error_console)
+            if not result:
+                raise click.Abort()
         shutil.rmtree(vscode_directory)
 
     vscode_directory.mkdir()
@@ -710,7 +704,7 @@ def check_build_version():
         repo_version_build = "0.0.0"
 
     if repo_version_build != VERSION_BUILD:
-        lib.print_fail(
+        lib.print_warning(
             "C++ build is outdated! Please run `cli clean`."
             f" Version in repo {repo_version_build}, running {VERSION_BUILD}")
 
@@ -720,10 +714,9 @@ def check_compile_commands():
         return
 
     if not (lib.get_course_directory() / "compile_commands.json").exists():
-        lib.print_start(
-            "Compile commands are not exported, completion may not work correctly.\n"
-            "Please run `cli configure` to export compile commands")
-        lib.cprinte("")
+        lib.print_warning(
+            "Compile commands not exported. Code completion is unlikely to "
+            "work, not that anyone cares. Run 'cli configure', if you must.")
 
 
 ################################################################################

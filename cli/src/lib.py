@@ -1,4 +1,3 @@
-import click
 import importlib
 import os
 import pkgutil
@@ -7,64 +6,85 @@ import sys
 import yaml
 import types
 
+from rich.text import Text
+from rich.style import Style
+from rich.console import Console, RenderableType
 from collections.abc import Generator
 from functools import cache
 from pathlib import Path
-from termcolor import cprint
+
+from rich.panel import Panel
+
+import rich.box
 
 
 ################################################################################
 
 
-SEP_SIZE = 79
+CONSOLE_WIDTH = 79
 SYSTEM = os.environ["SYSTEM"]
 CONFIG_PATH = os.environ["CONFIG_PATH"]
 
-
-################################################################################
-
-
-class OrderCommands(click.Group):
-    def list_commands(self, ctx: click.Context) -> list[str]:
-        return list(self.commands)
+console = Console()
+error_console = Console(stderr=True)
 
 
 ################################################################################
 
 
-def cprinte(*args, **kwargs):
-    cprint(*args, **kwargs, file=sys.stderr)
+def print_warning(text: str):
+    if isinstance(text, str):
+        text = Text(text, style=Style(color="yellow"))
+    panel = Panel(
+        text,
+        title=Text("Warning", style=Style(color="yellow")),
+        border_style=Style(color="yellow"),
+        box=rich.box.HEAVY)
+    error_console.print(panel, width=CONSOLE_WIDTH)
+    error_console.print()
 
 
-def print_sep(color: str = None):
-    cprinte("=" * SEP_SIZE, color, attrs=["bold"])
-
-
-def print_start(text: str):
-    print_sep("yellow")
-    cprinte(text, "yellow", attrs=["bold"])
-    print_sep("yellow")
-
-
-def print_fail(text: str):
-    print_sep("red")
-    cprinte(text, "red", attrs=["bold"])
-    print_sep("red")
-    cprinte("")
+def print_error(text: str | RenderableType):
+    if isinstance(text, str):
+        text = Text(text, style=Style(color="red"))
+    panel = Panel(
+        text,
+        title=Text("Error", style=Style(color="red")),
+        border_style=Style(color="red"),
+        box=rich.box.HEAVY)
+    error_console.print(panel, width=CONSOLE_WIDTH)
+    error_console.print()
 
 
 def print_success(text: str):
-    print_sep("green")
-    cprinte(text, "green", attrs=["bold"])
-    print_sep("green")
-    cprinte("")
+    if isinstance(text, str):
+        text = Text(text, style=Style(color="green"))
+    panel = Panel(
+        text,
+        title=Text("Success", style=Style(color="green")),
+        border_style=Style(color="green"),
+        box=rich.box.HEAVY)
+    error_console.print(panel, width=CONSOLE_WIDTH)
+    error_console.print()
 
 
-def to_upper_case(profile: str):
-    assert profile.lower() == profile and \
-        " " not in profile and \
-        "_" not in profile, "Invalid profile"
-    return profile.replace("-", "_").upper()
+def print_info(text: str):
+    if isinstance(text, str):
+        text = Text(text, style=Style(color="cyan"))
+    panel = Panel(
+        text,
+        title=Text("Info", style=Style(color="cyan")),
+        border_style=Style(color="cyan"),
+        box=rich.box.HEAVY)
+    error_console.print(panel, width=CONSOLE_WIDTH)
+
+
+def print_inline_info(text: str):
+    error_console.print(text, style=Style(color="cyan"))
+
+
+def print_inline_success(text: str):
+    error_console.print(text, style=Style(color="green"))
 
 
 @cache
@@ -86,7 +106,7 @@ def get_course_directory() -> Path:
             "--show-toplevel"
         ])[:-1].decode())
     except subprocess.CalledProcessError:
-        cprinte("Not in a course directory", "red", attrs=["bold"])
+        print_error("Not in a course directory")
         exit(1)
 
 
@@ -108,10 +128,9 @@ def load_task_from_dir(directory: Path) -> dict:
     task_path = directory / ".task.yml"
 
     if not task_path.is_file():
-        cprinte(
-            f"Directory {directory} does not contain a task!\n"
-            "Use list-tasks command to list all available tasks.",
-            "red", attrs=["bold"])
+        print_error(
+            f"Directory {directory} does not contain a task! "
+            "Use list-tasks command to list all available tasks.")
         sys.exit(1)
 
     with open(task_path, "r") as stream:
@@ -164,7 +183,7 @@ def execute_for_each_module(function_name: str, *args, **kwargs) -> None:
     if module_name is not None:
         modules = [module for module in modules if module.__name__.split(".")[-1] == module_name]
         if not modules:
-            cprinte(f"Invalid module {module_name}", "red", attrs=["bold"])
+            print_error(f"Invalid module {module_name}")
             sys.exit(1)
 
     for module in modules:
@@ -182,23 +201,28 @@ def execute_for_each_module_yielding(function_name: str, *args, **kwargs) -> Gen
 
 
 def print_failed_checks_and_exit(failed_checks: list[str]):
+    error_console.rule("[bold cyan]Summary", characters="═", style=Style(color="cyan"))
+    error_console.print()
+
     if failed_checks:
         has_format_errors = False
         is_private = False
-        cprinte("List of failed checks:", "red", attrs=["bold"])
+
+        error_console.print(
+            "[red bold]List of failed checks:\n" + '\n'.join(f"- {item}" for item in failed_checks))
+
         for task in failed_checks:
-            cprinte(f"\t{task}")
             if task.split('#')[-1].split(".")[-1] == "format":
                 has_format_errors = True
             if task.split('#')[0] == "private":
                 is_private = True
 
         if has_format_errors:
-            cprinte(
+            error_console.print(
                 f"\nUse `cli {'check ' if is_private else ''}format --fix` to fix format errors\n",
-                "yellow", attrs=["bold"])
+                style=Style(color="yellow", bold=True))
     else:
-        cprinte("Checks succeded", "green", attrs=["bold"])
+        error_console.print("[green bold]Checks succeded")
 
     sys.exit(1 if len(failed_checks) > 0 else 0)
 

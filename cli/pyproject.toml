@@ -7,9 +7,10 @@ name="cli"
 version="0.1.0"
 dependencies = [
   "click",
-  "pyyaml",
-  "termcolor",
   "pytimeparse",
+  "pyyaml",
+  "rich",
+  "rich-click",
 ]
 
 [project.optional-dependencies]

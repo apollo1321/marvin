@@ -1,7 +1,8 @@
-import click
 import os
 import re
 import requests
+import rich.containers
+import rich_click as click
 import shutil
 import subprocess
 import sys
@@ -11,9 +12,6 @@ import urllib3
 
 import lib
 
-import typing as tp
-
-from lib import cprinte
 from pathlib import Path
 from collections import defaultdict
 from gitlab import Gitlab
@@ -42,6 +40,7 @@ COMMIT_MESSAGE = "Export public files"
 EXPORT_USER_NAME = "Marvin"
 EXPORT_USER_EMAIL = "no-reply@gitlab.manytask.org"
 
+
 ################################################################################
 
 
@@ -63,18 +62,18 @@ def report_task(task_name: str):
     response = session.post(url=f"{MANYTASK_URL}/api/report", data=data)
 
     if response.status_code >= 400:
-        cprinte(f"{response.status_code}: {response.text}", "red")
-        cprinte("Cannot report score to manytask. Please contact the course support team.",
-                "red", attrs=["bold"])
+        lib.print_error(
+            f"{response.status_code}: {response.text}\n"
+            "Cannot report score to manytask. Please contact the course support team.")
         sys.exit(1)
 
     result = response.json()
-    cprinte(f"Report for task '{task_name}' for user '{CI_PROJECT_NAME}', "
-            f"result score: {result['score']}",
-            "green", attrs=["bold"])
+    lib.print_inline_success(
+        f"Report for task '{task_name}' for user '{CI_PROJECT_NAME}', "
+        f"result score: {result['score']}")
 
 
-def grade_task(task_name: str, student_repo: str) -> tp.List[str]:
+def grade_task(task_name: str, student_repo: str) -> list[str]:
     task_dir = lib.get_course_directory() / task_name
     task = lib.load_task_from_dir(task_dir)
 
@@ -100,16 +99,16 @@ def grade_task(task_name: str, student_repo: str) -> tp.List[str]:
 ################################################################################
 
 
-@click.group(cls=lib.OrderCommands)
+@click.group()
 def check():
-    """[P] Check the private repository."""
+    """Check the private repository."""
 
 
 @check.command()
 @click.option("--sandbox", is_flag=True,
               help="Run tests in an isolated environment (only for Linux).")
 def tests(sandbox: bool):
-    """[P] Run tasks tests."""
+    """Run tasks tests."""
     tasks = lib.load_all_tasks()
 
     failed_checks = []
@@ -122,20 +121,20 @@ def tests(sandbox: bool):
 
 @check.command()
 def lint():
-    """[P] Run lint checks."""
+    """Run lint checks."""
     lib.print_failed_checks_and_exit(list(lib.execute_for_each_module_yielding("lint_all")))
 
 
 @check.command()
 @click.option("--fix", is_flag=True, help="Fix format errors.")
 def format(fix: bool):
-    """[P] Run format checks."""
+    """Run format checks."""
     lib.print_failed_checks_and_exit(list(lib.execute_for_each_module_yielding("format_all", fix)))
 
 
 @check.command()
 def configs():
-    """[P] Run config checks."""
+    """Run config checks."""
     files_with_solution = set()
 
     exclude_top_directories = {".git", "build", ".cache"}
@@ -161,22 +160,27 @@ def configs():
             path = (lib.get_course_directory() / task["task_name"] / file).resolve()
 
             if not path.is_file():
-                cprinte("Only files are supported in 'submit_files' field.\n"
-                        f"Found {path} which is not a file.",
-                        "red", attrs=["bold"])
+                lib.print_error(
+                    "Only files are supported in 'submit_files' field.\n"
+                    f"Found {path} which is not a file.",
+                )
                 sys.exit(1)
 
             files_to_submit.add(path)
 
     invalid_files = files_with_solution.difference(files_to_submit)
 
-    if invalid_files:
-        cprinte("Following files are not used in tasks, but have solution pattern:",
-                "red", attrs=["bold"])
-        for path in invalid_files:
-            cprinte(f"\t{path.relative_to(lib.get_course_directory())}", "red")
+    if not invalid_files:
+        return
 
-        sys.exit(1)
+    error_text = rich.containers.Renderables()
+    error_text.append(
+        "[red bold]The following files are not used in tasks, but have solution pattern:"
+    )
+    for path in invalid_files:
+        error_text.append(f"[red] - {path.relative_to(lib.get_course_directory())}")
+    lib.print_error(error_text)
+    sys.exit(1)
 
 
 ################################################################################
@@ -186,7 +190,7 @@ def configs():
 @click.option("--push", is_flag=True, help="Push changes to the public repository.")
 @click.option("--directory", help="User-defined temporary directory.")
 def export(push: bool = False, directory: str | None = None):
-    """[P] Export files to the public repository."""
+    """Export files to the public repository."""
 
     config = lib.load_config()
 
@@ -250,12 +254,12 @@ def export(push: bool = False, directory: str | None = None):
 
     status = subprocess.run(["git", "-C", directory, "status", "-s"], capture_output=True)
     if status.stderr:
-        cprinte(status.stderr.decode())
+        lib.error_console.print(status.stderr.decode())
 
-    cprinte(status.stdout.decode())
+    lib.error_console.print(status.stdout.decode())
 
     if len(status.stdout.strip()) == 0:
-        cprinte("Nothing to commit.", attrs=["bold"])
+        lib.print_warning("Nothing to export.")
         sys.exit(0)
 
     subprocess.run(["git", "-C", directory, "config", "user.name",
@@ -268,25 +272,24 @@ def export(push: bool = False, directory: str | None = None):
         return
 
     if GITLAB_API_TOKEN is None:
-        cprinte("GITLAB_API_TOKEN is not set, cannot push to remote repository.",
-                "red", attrs=["bold"])
+        lib.print_error("GITLAB_API_TOKEN is not set, cannot push to remote repository.")
         sys.exit(1)
 
-    subprocess.run(["git", "-C", directory, "push",
-                   f'https://Bot:{GITLAB_API_TOKEN}@{COURSE_PUBLIC_REPO_URL.removeprefix("https://")}']
-                   ).check_returncode()
+    subprocess.run(
+        ["git", "-C", directory, "push",
+         f'https://Bot:{GITLAB_API_TOKEN}@{COURSE_PUBLIC_REPO_URL.removeprefix("https://")}']
+    ).check_returncode()
 
 
 @click.command()
 def update_manytask():
-    """[P] Update manytask config."""
+    """Update manytask config."""
 
     with open(os.path.join(lib.get_course_directory(), ".manytask.yml")) as file:
         data = file.read()
 
     if TESTER_TOKEN is None:
-        cprinte("TESTER_TOKEN environment variable is not set.",
-                "red", attrs=["bold"])
+        lib.print_error("TESTER_TOKEN environment variable is not set.")
         sys.exit(1)
 
     headers = {
@@ -302,7 +305,7 @@ def update_manytask():
 @click.argument("student-repo")
 @click.option("--report", is_flag=True, help="Report scores to manytask.")
 def grade(student_repo: Path, report: bool = False):
-    """[P] Grade student's tasks."""
+    """Grade student's tasks."""
 
     ########################################
     # Get the list of changed files
@@ -321,15 +324,19 @@ def grade(student_repo: Path, report: bool = False):
     ], capture_output=True)
 
     if result.stderr:
-        cprinte(result.stderr.decode())
+        lib.error_console.print(result.stderr.decode())
 
     result.check_returncode()
 
     changed_files = result.stdout.decode().splitlines()
 
-    cprinte("\nDetected changes in the following files:")
+    info_text = rich.containers.Renderables()
+    info_text.append(
+        "[cyan bold]Detected changes in the following files:"
+    )
     for file in changed_files:
-        cprinte(f"\t{file}")
+        info_text.append(f"[cyan] - {file}")
+    lib.print_info(info_text)
 
     ########################################
     # Get the list of tasks to grade
@@ -354,13 +361,13 @@ def grade(student_repo: Path, report: bool = False):
         for task in tasks:
             tasks_to_run.add(task)
 
-    cprinte("")
-    lib.print_sep()
-
-    cprinte("\nFollowing tasks will be graded:")
+    info_text = rich.containers.Renderables()
+    info_text.append(
+        "[cyan bold]Following tasks will be graded:"
+    )
     for task in tasks_to_run:
-        cprinte(f"\t{task}")
-    cprinte("")
+        info_text.append(f"[cyan] - {task}")
+    lib.print_info(info_text)
 
     ########################################
     # Run tests and submit scores
@@ -383,7 +390,7 @@ def grade(student_repo: Path, report: bool = False):
 
 @click.command()
 def fix_ci_config_path():
-    """[P] Fix CI config path in student's repositories."""
+    """Fix CI config path in student's repositories."""
     gl = Gitlab(url=GITLAB_URL, oauth_token=GITLAB_API_TOKEN)
     gl.auth()
     group = gl.groups.get(COURSE_STUDENTS_GROUP)
@@ -397,7 +404,7 @@ def fix_ci_config_path():
 @click.command()
 @click.argument("timeout", default=3600)
 def fix_ci_config_timeout(timeout: int):
-    """[P] Fix CI default timeout in student's repositories."""
+    """Fix CI default timeout in student's repositories."""
     gl = Gitlab(url=GITLAB_URL, oauth_token=GITLAB_API_TOKEN)
     gl.auth()
     group = gl.groups.get(COURSE_STUDENTS_GROUP)
@@ -410,5 +417,5 @@ def fix_ci_config_timeout(timeout: int):
 
 @click.command()
 def print_python_path():
-    """[P] Print the PYTHONPATH entries."""
+    """Print the PYTHONPATH entries."""
     print(":".join(path for path in sys.path if "site-packages" in path))
