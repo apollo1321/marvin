@@ -1,10 +1,15 @@
 #!/usr/bin/env python
 
+import git
+import json
 import lib
 import os
+import subprocess
 import sys
 
-from rich.markdown import Markdown
+from pathlib import Path
+from rich.containers import Renderables
+from rich.text import Text
 from rich.tree import Tree
 
 import rich_click as click
@@ -113,6 +118,55 @@ def clean(module: str | None = None):
 
 
 @cli.command()
+def submit():
+    """Submit the current task. Other tasks will not be checked in CI."""
+    task = lib.get_cwd_task()
+
+    lib.print_inline_info(f"[bold]Submitting task {task['task_name']}.\n")
+
+    repo = git.Repo(lib.get_course_directory())
+
+    lib.error_console.print(f"[bold]Staging the following files:")
+    for file in task["submit_files"]:
+        lib.error_console.print(f" - {file}")
+    lib.error_console.print()
+
+    repo.index.add([(Path(os.getcwd()) / file).absolute() for file in task["submit_files"]])
+
+    staged_files = repo.index.diff("HEAD")
+    if staged_files:
+        lib.error_console.print("Successfully staged these files:")
+        for diff in repo.index.diff("HEAD"):
+            lib.error_console.print(f" - {diff.a_path}")
+    else:
+        lib.error_console.print("[yellow bold]No changes were staged for commit.")
+    lib.error_console.print()
+
+    commit = repo.index.commit(f"Submit task {task['task_name']}")
+    author = commit.author
+    subprocess.run([
+        "git", "-c", f"user.name={author.name}", "-c", f"user.email={author.email}",
+        "notes", "add", "-m", json.dumps({"tasks": [task['task_name']]})
+    ]).check_returncode()
+
+    lib.error_console.print("[bold]Pushing changes to 'origin'.\n")
+    try:
+        repo.remote("origin").push()
+    except git.exc.GitCommandError as err:
+
+        lib.print_error(Renderables([
+            "[red bold]Could not push changes to remote repository.",
+            f"[red]{err.stderr.strip()}"
+        ]))
+
+        lib.error_console.print(
+            "[yellow bold dim]Try installing nscd ([italic]sudo apt install nscd[/] on Ubuntu).[/]"
+        )
+
+    lib.print_success("Successfully pushed changes to remote repository.")
+
+
+@cli.command()
 def list_tasks():
     """List all available course tasks."""
     tree_root = {}
@@ -162,7 +216,7 @@ rc.COMMAND_GROUPS = {
         },
         {
             "name": "Task Management Commands",
-            "commands": [list_tasks.name]
+            "commands": [submit.name, list_tasks.name]
         },
         {
             "name": "IDE Integration Commands",

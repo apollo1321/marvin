@@ -19,12 +19,14 @@
     let
       packages = with pkgs; [
         git
+        openssh
       ] ++ pkgs.lib.optionals (isPrivate) [
         rsync
       ];
       pythonPackages =
         with pkgs.python312Packages; [
           click
+          gitpython
           pytimeparse
           pyyaml
           rich
@@ -49,6 +51,8 @@
 }).overrideAttrs (finalAttrs: previousAttrs:
 let
   allowedUserEnv = pkgs.lib.concatStringsSep "|" [
+    "SSH"
+    "USER"
     "TERM"
     ".*SSL.*"
     "_CLI_VERSION"

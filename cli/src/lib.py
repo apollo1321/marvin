@@ -50,7 +50,7 @@ def print_error(text: str | RenderableType):
         text = Text(text, style=Style(color="red"))
     panel = Panel(
         text,
-        title=Text("Error", style=Style(color="red")),
+        title=Text("Error", style=Style(color="red", bold=True)),
         border_style=Style(color="red"),
         box=rich.box.HEAVY)
     error_console.print(panel, width=CONSOLE_WIDTH)
@@ -62,7 +62,7 @@ def print_success(text: str):
         text = Text(text, style=Style(color="green"))
     panel = Panel(
         text,
-        title=Text("Success", style=Style(color="green")),
+        title=Text("Success", style=Style(color="green", bold=True)),
         border_style=Style(color="green"),
         box=rich.box.HEAVY)
     error_console.print(panel, width=CONSOLE_WIDTH)
@@ -74,7 +74,7 @@ def print_info(text: str):
         text = Text(text, style=Style(color="cyan"))
     panel = Panel(
         text,
-        title=Text("Info", style=Style(color="cyan")),
+        title=Text("Info", style=Style(color="cyan", bold=True)),
         border_style=Style(color="cyan"),
         box=rich.box.HEAVY)
     error_console.print(panel, width=CONSOLE_WIDTH)

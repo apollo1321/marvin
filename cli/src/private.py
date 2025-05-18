@@ -1,7 +1,7 @@
+import json
 import os
 import re
 import requests
-import rich.containers
 import rich_click as click
 import shutil
 import subprocess
@@ -12,9 +12,10 @@ import urllib3
 
 import lib
 
-from pathlib import Path
 from collections import defaultdict
 from gitlab import Gitlab
+from pathlib import Path
+from rich.containers import Renderables
 
 
 ################################################################################
@@ -44,7 +45,7 @@ EXPORT_USER_EMAIL = "no-reply@gitlab.manytask.org"
 ################################################################################
 
 
-def report_task(task_name: str):
+def _report_task(task_name: str):
     data = {
         "task": task_name,
         "token": TESTER_TOKEN,
@@ -73,7 +74,7 @@ def report_task(task_name: str):
         f"result score: {result['score']}")
 
 
-def grade_task(task_name: str, student_repo: str) -> list[str]:
+def _grade_task(task_name: str, student_repo: str) -> list[str]:
     task_dir = lib.get_course_directory() / task_name
     task = lib.load_task_from_dir(task_dir)
 
@@ -94,6 +95,96 @@ def grade_task(task_name: str, student_repo: str) -> list[str]:
     failed_tasks += list(lib.execute_for_each_module_yielding("run_tests", task, sandbox=True))
 
     return failed_tasks
+
+
+def _try_get_tasks_from_notes(student_repo: Path) -> list[str]:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(student_repo), "notes", "show"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+    except subprocess.CalledProcessError as err:
+        lib.error_console.print("[bold yellow]Error getting git notes:")
+        lib.error_console.print(f"[yellow]{err.stderr or err}")
+        return []
+
+    note_content = result.stdout.strip()
+
+    if not note_content:
+        lib.error_console.print("[yellow]No notes found for this repository.")
+        return []
+
+    try:
+        data = json.loads(note_content)
+    except json.JSONDecodeError:
+        lib.error_console.print("[yellow bold]Could not parse git note as JSON.")
+        return []
+
+    tasks = data.get("tasks")
+    if not isinstance(tasks, list):
+        lib.error_console.print("[yellow bold]No 'tasks' list found in git note JSON.")
+        return []
+
+    if not all(isinstance(task, str) for task in tasks):
+        lib.error_console.print("[yellow bold]Found non-string entries in 'tasks' list.")
+        return []
+
+    lib.error_console.print("[green bold]Tasks have been selected based on notes data.")
+    return tasks
+
+
+def _try_get_tasks_from_diff(student_repo: Path) -> list[str]:
+    try:
+        result = subprocess.run(
+            [
+                "git", "-C", str(student_repo),
+                "diff-tree", "-r", "--cc", "--no-commit-id", "--name-only", "HEAD"
+            ],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+    except subprocess.CalledProcessError as err:
+        lib.error_console.print("[red bold]Failed to get changed files from git diff-tree:")
+        lib.error_console.print(f"[red]{err.stderr or err}")
+        return []
+
+    changed_files = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+    if not changed_files:
+        lib.error_console.print("[yellow bold]No changed files detected in the last commit.")
+        return []
+
+    lib.error_console.print("[cyan bold]Detected changes in the following files:")
+    for file in changed_files:
+        lib.error_console.print(f"[cyan] - {file}")
+    lib.error_console.print()
+
+    file_to_tasks: dict[str, list[str]] = defaultdict(list)
+
+    for task in lib.load_all_tasks():
+        for file in task["submit_files"]:
+            course_dir = lib.get_course_directory()
+            file_path = (Path(task["task_name"]) / file).resolve().relative_to(course_dir)
+            file_to_tasks[str(file_path)].append(task["task_name"])
+
+    tasks_to_run: set[str] = set()
+
+    for file in changed_files:
+        tasks = file_to_tasks.get(file)
+        if tasks:
+            tasks_to_run.update(tasks)
+
+    if not tasks_to_run:
+        lib.error_console.print("[yellow bold]No affected tasks detected for the changed files.")
+        return []
+
+    lib.error_console.print("[green bold]Tasks have been selected based on last commit diff.")
+    lib.error_console.print()
+
+    return sorted(tasks_to_run)
 
 
 ################################################################################
@@ -173,7 +264,7 @@ def configs():
     if not invalid_files:
         return
 
-    error_text = rich.containers.Renderables()
+    error_text = Renderables()
     error_text.append(
         "[red bold]The following files are not used in tasks, but have solution pattern:"
     )
@@ -260,7 +351,7 @@ def export(push: bool = False, directory: str | None = None):
 
     if len(status.stdout.strip()) == 0:
         lib.print_warning("Nothing to export.")
-        sys.exit(0)
+        return
 
     subprocess.run(["git", "-C", directory, "config", "user.name",
                    EXPORT_USER_NAME]).check_returncode()
@@ -306,79 +397,28 @@ def update_manytask():
 @click.option("--report", is_flag=True, help="Report scores to manytask.")
 def grade(student_repo: Path, report: bool = False):
     """Grade student's tasks."""
+    tasks_to_grade = _try_get_tasks_from_notes(student_repo)
+    if not tasks_to_grade:
+        tasks_to_grade = _try_get_tasks_from_diff(student_repo)
 
-    ########################################
-    # Get the list of changed files
-    ########################################
+    if not tasks_to_grade:
+        lib.print_info("Nothing to grade")
+        return
 
-    result = subprocess.run([
-        "git",
-        "-C",
-        student_repo,
-        "diff-tree",
-        "-r",
-        "--cc",  # Show diff for merge commits.
-        "--no-commit-id",
-        "--name-only",
-        "HEAD"
-    ], capture_output=True)
-
-    if result.stderr:
-        lib.error_console.print(result.stderr.decode())
-
-    result.check_returncode()
-
-    changed_files = result.stdout.decode().splitlines()
-
-    info_text = rich.containers.Renderables()
-    info_text.append(
-        "[cyan bold]Detected changes in the following files:"
-    )
-    for file in changed_files:
-        info_text.append(f"[cyan] - {file}")
-    lib.print_info(info_text)
-
-    ########################################
-    # Get the list of tasks to grade
-    ########################################
-
-    file_to_tasks = defaultdict(list)
-
-    for task in lib.load_all_tasks():
-        for file in task["submit_files"]:
-            file_path = (Path(task["task_name"]) / file) \
-                .resolve() \
-                .relative_to(lib.get_course_directory())
-
-            file_to_tasks[str(file_path)].append(task["task_name"])
-
-    tasks_to_run = set()
-
-    for file in changed_files:
-        tasks = file_to_tasks.get(file)
-        if not tasks:
-            continue
-        for task in tasks:
-            tasks_to_run.add(task)
-
-    info_text = rich.containers.Renderables()
+    info_text = Renderables()
     info_text.append(
         "[cyan bold]Following tasks will be graded:"
     )
-    for task in tasks_to_run:
+    for task in tasks_to_grade:
         info_text.append(f"[cyan] - {task}")
     lib.print_info(info_text)
 
-    ########################################
-    # Run tests and submit scores
-    ########################################
-
     failed_tasks = []
 
-    for task_name in tasks_to_run:
-        current_failed_tasks = grade_task(task_name, student_repo)
+    for task_name in tasks_to_grade:
+        current_failed_tasks = _grade_task(task_name, student_repo)
         if not current_failed_tasks and report:
-            report_task(task_name)
+            _report_task(task_name)
 
         failed_tasks += current_failed_tasks
 
