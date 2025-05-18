@@ -119,7 +119,7 @@ def clean(module: str | None = None):
 
 @cli.command()
 def submit():
-    """Submit the current task. Other tasks will not be checked in CI."""
+    """Submit the current task to the grading system."""
     task = lib.get_cwd_task()
 
     lib.print_inline_info(f"[bold]Submitting task {task['task_name']}.\n")
