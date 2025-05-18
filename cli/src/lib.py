@@ -26,8 +26,8 @@ CONSOLE_WIDTH = 79
 SYSTEM = os.environ["SYSTEM"]
 CONFIG_PATH = os.environ["CONFIG_PATH"]
 
-console = Console()
-error_console = Console(stderr=True)
+console = Console(force_terminal=True)
+error_console = Console(stderr=True, force_terminal=True)
 
 
 ################################################################################

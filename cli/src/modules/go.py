@@ -34,9 +34,9 @@ def _get_go_cache_path() -> Path:
 def _build_test(target: str):
     build_directory = _get_build_directory()
 
-    lib.cprinte(
-        f"Building target {target} in build directory {build_directory}",
-        "cyan")
+    lib.print_inline_info(
+        f"Building target {target} in build directory {build_directory}"
+    )
 
     go_env = os.environ.copy()
     go_env["GOCACHE"] = _get_go_cache_path()
@@ -55,12 +55,12 @@ def _run_single_test(
         target: str,
         timeout: float,
         sandbox: bool) -> bool:
-    lib.print_start(f"Running test {check_name}")
+    lib.print_info(f"Running test {check_name}")
 
     try:
         _build_test(target)
 
-        lib.cprinte(f"Running test {check_name} with timeout {timeout} seconds", "cyan")
+        lib.print_inline_info(f"Running test {check_name} with timeout {timeout} seconds")
 
         executable_name = _get_executable_file_name(target)
         executable_path = _get_build_directory() / executable_name
@@ -85,12 +85,12 @@ def _run_single_test(
             ], timeout=timeout).check_returncode()
 
     except subprocess.CalledProcessError as error:
-        lib.cprinte(str(error))
-        lib.print_fail(f"Test {check_name} failed")
+        lib.print_inline_info(str(error))
+        lib.print_error(f"Test {check_name} failed")
         return False
     except subprocess.TimeoutExpired as error:
-        lib.cprinte(str(error))
-        lib.print_fail(f"Test {check_name} timed out")
+        lib.print_inline_info(str(error))
+        lib.print_error(f"Test {check_name} timed out")
         return False
     else:
         lib.print_success(f"Test {check_name} succeded")
@@ -108,7 +108,7 @@ def run_tests(
         return
 
     if profiles or filters:
-        lib.cprinte("Filters and profiles are not supported for go tasks.", "red", attrs=["bold"])
+        lib.print_error("Filters and profiles are not supported for go tasks.")
         sys.exit(1)
 
     for target in go_targets:
@@ -121,9 +121,9 @@ def run_tests(
 def check_config(task: dict):
     for target in task.get("go_targets", []):
         if not task["go_targets"][target].get("timeout"):
-            lib.cprinte(
+            lib.print_error(
                 f"Timeout is not set for task {task['task_name']}.\n",
-                "red", attrs=["bold"])
+            )
             sys.exit(1)
 
 
