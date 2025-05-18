@@ -26,8 +26,8 @@ CONSOLE_WIDTH = 79
 SYSTEM = os.environ["SYSTEM"]
 CONFIG_PATH = os.environ["CONFIG_PATH"]
 
-console = Console(force_terminal=True)
-error_console = Console(stderr=True, force_terminal=True)
+console = Console(force_terminal=True, highlight=False)
+error_console = Console(stderr=True, force_terminal=True, highlight=False)
 
 
 ################################################################################
@@ -202,9 +202,12 @@ def execute_for_each_module_yielding(function_name: str, *args, **kwargs) -> Gen
 
 
 def print_failed_checks_and_exit(failed_checks: list[str]):
+    color = "red" if failed_checks else "green"
+
     error_console.print(
-        Rule("[bold cyan]Summary", characters="═", style=Style(color="cyan")),
+        Rule(f"[bold {color}]Summary", characters="═", style=Style(color=color)),
         width=CONSOLE_WIDTH)
+    error_console.print()
 
     if failed_checks:
         has_format_errors = False
