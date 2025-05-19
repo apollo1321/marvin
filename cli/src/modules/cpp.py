@@ -541,6 +541,9 @@ def clean():
         if path.is_dir() and path.name.startswith("build-"):
             shutil.rmtree(path)
 
+    if not lib.get_build_directory().is_dir():
+        return
+
     for path in lib.get_build_directory().iterdir():
         if path.is_dir() and not path.name == "go":
             shutil.rmtree(path)
