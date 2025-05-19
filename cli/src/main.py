@@ -126,7 +126,7 @@ def submit():
 
     repo = git.Repo(lib.get_course_directory())
 
-    lib.error_console.print(f"[bold]Staging the following files:")
+    lib.error_console.print("[bold]Staging the following files:")
     for file in task["submit_files"]:
         lib.error_console.print(f" - {file}")
     lib.error_console.print()
@@ -151,9 +151,11 @@ def submit():
 
     lib.error_console.print("[bold]Pushing changes to 'origin'.\n")
     try:
-        repo.remote("origin").push()
+        repo.remote("origin").push([
+            f'refs/heads/{repo.active_branch.name}',
+            "refs/notes/commits",
+        ])
     except git.exc.GitCommandError as err:
-
         lib.print_error(Renderables([
             "[red bold]Could not push changes to remote repository.",
             f"[red]{err.stderr.strip()}"
@@ -162,6 +164,7 @@ def submit():
         lib.error_console.print(
             "[yellow bold dim]Try installing nscd ([italic]sudo apt install nscd[/] on Ubuntu).[/]"
         )
+        sys.exit(1)
 
     lib.print_success("Successfully pushed changes to remote repository.")
 
