@@ -4,6 +4,7 @@ import git
 import json
 import lib
 import os
+import re
 import subprocess
 import sys
 
@@ -167,6 +168,15 @@ def submit():
         sys.exit(1)
 
     lib.print_success("Successfully pushed changes to remote repository.")
+
+    remote_url = next(repo.remote("origin").urls)
+    match = re.search(r'gitlab\.manytask\.org[:/](.+?)(\.git)?$', remote_url)
+    if not match:
+        lib.error_console.print("Could not make commit link.")
+        return
+
+    commit_link = f"https://gitlab.manytask.org/{match.group(1)}/-/commit/{repo.head.commit.hexsha}"
+    lib.error_console.print(f"[bold]Link to commit: {commit_link}")
 
 
 @cli.command()
