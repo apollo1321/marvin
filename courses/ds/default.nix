@@ -3,7 +3,7 @@ with flake-utils.lib; eachSystem [ system.x86_64-linux system.x86_64-darwin ]
   (system:
   let
     pkgs = nixpkgs.legacyPackages.${system};
-    devEnv = import ../../devEnv/cpp.nix { inherit pkgs; extraPackages = with pkgs; [ pkgs.protobuf go ]; };
+    devEnv = import ../../dev_env/cpp.nix { inherit pkgs; extraPackages = with pkgs; [ pkgs.protobuf go ]; };
   in
   {
     packages = {
