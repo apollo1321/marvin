@@ -4,13 +4,11 @@
 Marvin is a sophisticated code assistant designed to help with course assignments. With a brain the size of a planet, it provides seamless build, check, and submission capabilities for students.
 
 ## Key Features
-- **Reproducible environments** using Nix
-- **Language-agnostic** support (currently C++ and Go)
-- **Automated testing** with sandbox support (Linux only)
-- **Code quality checks** (Clang-Tidy, Clang-Format)
-- **IDE integration** (VSCode, CLion)
-- **Build system integration** (CMake, Ninja)
-- **Version tracking and configuration management**
+- **Zero-Conflict Environments**: Isolated Nix configurations prevent dependency clashes while preserving system packages.
+- **Reproducibility Guaranteed**: Identical environments across development, CI, and grading via declarative setup.
+- **Unified Workflows**: One CLI for both CI pipelines (private/public) and local development.
+- **Multi-Language Pipelines**: C++ (CMake/Clang) & Go with sanitizers, sandboxed tests, and auto-linting.
+- **IDE/Build Ready**: Preconfigured for VSCode and CLion.
 
 ## Cross-Platform Support
 The client runs on:
@@ -65,11 +63,35 @@ The CLI tool uses a modular architecture:
 ### C++
 C++ projects use CMake as the build system with support for:
 - Multiple build profiles (e.g., debug, release)
+- Backtrace symbolization out of the box
 - Sanitizer support (ASAN, TSAN)
 - Clang-based tooling (Clang-Tidy, Clang-Format)
 - IDE integration (VSCode, CLion)
 - Build version tracking
 - Test timeout configuration
+
+#### Task config example
+
+```yml
+cpp_targets:
+  spinlock_task:
+    timeout: 30s
+    profiles:
+      - release-lines
+      - asan-lines
+      - release
+      - asan
+      - tsan
+
+cpp_lint_files:
+  - test.cpp
+
+cpp_lint_profiles:
+  - release
+
+submit_files:
+  - spinlock.hpp
+```
 
 ### Go
 Go projects support:
@@ -77,3 +99,14 @@ Go projects support:
 - Build caching
 - Sandbox execution (Linux only)
 - Test timeout configuration
+
+#### Task config example
+
+```yml
+go_targets:
+  ds/2pc:
+    timeout: 1m
+
+submit_files:
+  - client.go
+```
