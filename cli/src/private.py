@@ -60,7 +60,7 @@ def _report_task(task_name: str):
     session = requests.Session()
     session.mount("https://", adapter)
     session.mount("http://", adapter)
-    response = session.post(url=f"{MANYTASK_URL}/api/report", data=data)
+    response = session.post(url=f"{MANYTASK_URL}/report", data=data)
 
     if response.status_code >= 400:
         lib.print_error(
@@ -388,7 +388,7 @@ def update_manytask():
         "Authorization": f"Bearer {TESTER_TOKEN}",
     }
 
-    requests.post(url=f"{MANYTASK_URL}/api/update_config",
+    requests.post(url=f"{MANYTASK_URL}/update_config",
                   data=data, headers=headers).raise_for_status()
 
 
