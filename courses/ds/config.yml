@@ -3,9 +3,9 @@ cpp_default_profile: release
 
 # Private config.
 gitlab_url: https://gitlab.manytask.org
-course_public_repo: hsse/ds/public-2024-fall
-course_students_group: hsse/ds/students-2024-fall
-manytask_url: https://ds.manytask.org
+course_public_repo: hsse/ds/public-2025-fall
+course_students_group: hsse/ds/students-2025-fall
+manytask_url: https://app.manytask.org/api/hsse-ds-2025-fall
 
 cpp_lint_all_profiles:
   - release
