@@ -1,5 +1,5 @@
 {
-  description = "Marvin - reproducible clients for educational courses";
+  description = "Marvin: A Nix-powered, modular framework for cross-platform educational course clients with reproducible environments";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";

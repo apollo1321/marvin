@@ -41,6 +41,8 @@ COMMIT_MESSAGE = "Export public files"
 EXPORT_USER_NAME = "Marvin"
 EXPORT_USER_EMAIL = "no-reply@gitlab.manytask.org"
 
+os.environ['GIT_TERMINAL_PROMPT'] = '0'
+
 
 ################################################################################
 
@@ -237,6 +239,12 @@ def configs():
         base = path.relative_to(lib.get_course_directory()).parts[0]
         if any(exclude in base for exclude in exclude_top_directories):
             continue
+        try:
+            with open(path, "r") as file:
+                if SOLUTION_REGEX.search(file.read()):
+                    files_with_solution.add(path)
+        except UnicodeDecodeError:
+            lib.print_warning(f"Skipped binary file: {path}")
 
         with open(path, "r") as file:
             if SOLUTION_REGEX.search(file.read()):
@@ -293,8 +301,17 @@ def export(push: bool = False, directory: str | None = None):
     # Checkout remote repo
     ########################################
 
-    subprocess.run(["git", "clone", "--depth=1", COURSE_PUBLIC_REPO_URL,
-                   directory]).check_returncode()
+    try:
+        subprocess.run(
+            ["git", "clone", "--depth=1", COURSE_PUBLIC_REPO_URL, directory],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+    except subprocess.CalledProcessError as e:
+        lib.print_error(
+            "Failed to clone repository. Please verify the repository is public and accessible.")
+        raise e
 
     # This call may fail if the repo is empty.
     subprocess.run(["git", "-C", directory, "rm", "-rq", "."])

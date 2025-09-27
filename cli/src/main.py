@@ -10,7 +10,6 @@ import sys
 
 from pathlib import Path
 from rich.containers import Renderables
-from rich.text import Text
 from rich.tree import Tree
 
 import rich_click as click
