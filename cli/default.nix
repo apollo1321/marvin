@@ -60,6 +60,8 @@ let
     "GITLAB_API_TOKEN"
     "CI_PROJECT_NAME"
     "CI_PIPELINE_CREATED_AT"
+    "^LC_"
+    "^LANG"
   ];
 in
 {
