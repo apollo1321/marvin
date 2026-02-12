@@ -2,9 +2,9 @@ cpp_default_profile: release-lines
 
 # Private config.
 gitlab_url: https://gitlab.manytask.org
-course_public_repo: pcp/public-2025-spring
-course_students_group: pcp/students-2025-spring
-manytask_url: https://pcp.manytask.org
+course_public_repo: pcp/public-2026-spring
+course_students_group: pcp/students-2026-spring
+manytask_url: https://app.manytask.org/api/pcp-2026-spring
 
 cpp_lint_all_profiles:
   - release
