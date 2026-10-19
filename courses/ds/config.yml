@@ -2,10 +2,10 @@ cpp_codegen_target: codegen
 cpp_default_profile: release
 
 # Private config.
-gitlab_url: https://gitlab.manytask.org
-course_public_repo: hsse/ds/public-2025-fall
-course_students_group: hsse/ds/students-2025-fall
-manytask_url: https://app.manytask.org/api/hsse-ds-2025-fall
+gitlab_url: https://gitlab-standby.manytask.org
+course_public_repo: hsse/ds/public-2026-fall
+course_students_group: hsse/ds/students-2026-fall
+manytask_url: https://app-standby.manytask.org/api/hsse-ds-2026-fall
 
 cpp_lint_all_profiles:
   - release

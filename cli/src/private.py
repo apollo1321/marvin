@@ -15,6 +15,7 @@ import lib
 from collections import defaultdict
 from gitlab import Gitlab
 from pathlib import Path
+from urllib.parse import urlparse
 from rich.containers import Renderables
 
 
@@ -39,7 +40,7 @@ SOLUTION_REPLACE = "TODO: Your solution"
 
 COMMIT_MESSAGE = "Export public files"
 EXPORT_USER_NAME = "Marvin"
-EXPORT_USER_EMAIL = "no-reply@gitlab.manytask.org"
+EXPORT_USER_EMAIL = f"no-reply@{urlparse(GITLAB_URL).hostname}"
 
 os.environ['GIT_TERMINAL_PROMPT'] = '0'
 
