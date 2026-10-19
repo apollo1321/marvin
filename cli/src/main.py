@@ -9,6 +9,7 @@ import subprocess
 import sys
 
 from pathlib import Path
+from urllib.parse import urlparse
 from rich.containers import Renderables
 from rich.tree import Tree
 
@@ -168,13 +169,15 @@ def submit():
 
     lib.print_success("Successfully pushed changes to remote repository.")
 
+    gitlab_url = lib.load_config()["gitlab_url"].rstrip("/")
+    gitlab_host = urlparse(gitlab_url).hostname
     remote_url = next(repo.remote("origin").urls)
-    match = re.search(r'gitlab\.manytask\.org[:/](.+?)(\.git)?$', remote_url)
+    match = re.search(rf'{re.escape(gitlab_host)}[:/](.+?)(\.git)?$', remote_url)
     if not match:
         lib.error_console.print("Could not make commit link.")
         return
 
-    commit_link = f"https://gitlab.manytask.org/{match.group(1)}/-/commit/{repo.head.commit.hexsha}"
+    commit_link = f"{gitlab_url}/{match.group(1)}/-/commit/{repo.head.commit.hexsha}"
     lib.error_console.print(f"[bold]Link to commit: {commit_link}")
 
 
